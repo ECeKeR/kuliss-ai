@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for storing WhatsApp message histories and conversation state
+  kuliss-db:
+    image: postgres:15-alpine
+    container_name: kuliss_postgres
+    restart: always # Critical for production, automatically recovers from crashes and reboots
+    env_file:
+      - .env # Load secrets from the .env file instead of hardcoding
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CHANGE_THIS_TO_SECURE_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-kuliss_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - kuliss_pgdata:/var/lib/postgresql/data
+    healthcheck: # Ensures dependent services only launch when DB is actually ready
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kuliss_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  kuliss_pgdata:

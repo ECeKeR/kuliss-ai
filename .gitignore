@@ -1,0 +1,31 @@
+# Kuliss AI için zorunlu gizli dosyalar
+.env
+
+# WhatsApp oturum veritabanları
+*.db
+*.db-wal
+*.db-shm
+kuliss-session.db
+
+# Derlenmiş binary'ler ve cache'ler
+bin/*
+!bin/*.dmg
+.task/
+kuliss-bot
+
+# Ollama özel model (gerekli değil, gemma4:e4b direkt kullanılıyor)
+Modelfile
+
+# Mac sistem dosyaları
+.DS_Store
+
+# IDE dosyaları
+.idea/
+.vscode/
+*.swp
+
+# Frontend
+node_modules/
+frontend/dist/
+cmd/gui/frontend/
+*.sh

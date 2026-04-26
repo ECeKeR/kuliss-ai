@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=My Product
+Comment=A kuliss-desktop application
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/kuliss-desktop %u
+Terminal=false
+Type=Application
+Icon=kuliss-desktop
+Categories=Utility;
+StartupWMClass=kuliss-desktop
+
+ 
