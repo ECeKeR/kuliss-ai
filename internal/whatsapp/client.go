@@ -16,7 +16,7 @@ import (
 func Connect(EventHandler func(interface{})) *whatsmeow.Client {
 	ctx := context.Background()
 
-	container, err := sqlstore.New(ctx, "sqlite3", "file:kuliss-session.db?_foreign_keys=on", waLog.Noop)
+	container, err := sqlstore.New(ctx, "sqlite", "file:kuliss-session.db?_pragma=foreign_keys(1)", waLog.Noop)
 	if err != nil {
 		log.Fatalf("whatsmeow store hatası: %v", err)
 	}

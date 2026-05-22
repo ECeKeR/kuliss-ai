@@ -56,20 +56,36 @@ func stripThinkingTokens(s string) string {
 var httpClient = &http.Client{Timeout: 90 * time.Second}
 
 func (c *Client) Chat(history []map[string]string, userMessage string) (string, error) {
+	log.Printf("[SİSTEM] AI Modeline İstek Gönderiliyor: %s", c.Model)
+	log.Printf("[SİSTEM] Kullanıcı Mesajı: %s", userMessage)
 
 	var messages []Message
 
 	execPath, _ := os.Executable()
-	promptPath := filepath.Join(filepath.Dir(execPath), "prompt.txt")
+	promptJsonPath := filepath.Join(filepath.Dir(execPath), "prompt.json")
+	promptTxtPath := filepath.Join(filepath.Dir(execPath), "prompt.txt")
 
-	promptBytes, err := os.ReadFile(promptPath)
+	var systemPrompt string
+	
+	// First try to read JSON prompt
+	promptBytes, err := os.ReadFile(promptJsonPath)
 	if err != nil {
-		promptBytes, err = os.ReadFile("prompt.txt")
+		promptBytes, err = os.ReadFile("prompt.json")
 	}
 
-	systemPrompt := "Sen bir yapay zeka asistanısın."
-	if err == nil {
+	if err == nil && len(promptBytes) > 0 {
 		systemPrompt = string(promptBytes)
+	} else {
+		// Fallback to text prompt
+		promptBytes, err = os.ReadFile(promptTxtPath)
+		if err != nil {
+			promptBytes, err = os.ReadFile("prompt.txt")
+		}
+		
+		systemPrompt = "You are a professional and helpful WhatsApp assistant. Your system rules have not been defined by the administrator yet. Please provide general and short answers to users for now and wait for the administrator's configuration."
+		if err == nil {
+			systemPrompt = string(promptBytes)
+		}
 	}
 
 	messages = append(messages, Message{
@@ -104,6 +120,8 @@ func (c *Client) Chat(history []map[string]string, userMessage string) (string, 
 		return "", fmt.Errorf("json marshal: %w", err)
 	}
 
+	log.Printf("[SİSTEM] %d adet mesaj geçmişi eklendi. Ollama'dan yanıt bekleniyor...", len(messages))
+	
 	baseURL := strings.TrimRight(c.BaseURL, "/")
 	baseURL = strings.TrimSuffix(baseURL, "/v1")
 	baseURL = strings.TrimRight(baseURL, "/")
@@ -135,8 +153,12 @@ func (c *Client) Chat(history []map[string]string, userMessage string) (string, 
 
 	if chatResp.Message.Content == "" {
 		log.Printf("[AI DEBUG] Model boş cevap döndürdü. Ham yanıt: %s", string(body))
+	} else {
+		// Düşünme sürecini (varsa) logla
+		log.Printf("[SİSTEM] AI Düşünme ve Ham Çıktı: %s", chatResp.Message.Content)
 	}
 
 	clean := stripThinkingTokens(chatResp.Message.Content)
+	log.Printf("[SİSTEM] AI Temizlenmiş Yanıt: %s", clean)
 	return clean, nil
 }

@@ -5,12 +5,18 @@ export const PromptHtml = (t) => `
     <p class="page-subtitle">${t('prompt_sub')}</p>
   </div>
 
-  <div class="prompt-area">
-    <div class="prompt-toolbar">
-      <span class="prompt-meta">
-        <span class="char-count" id="char-count">0</span> ${t('chars')}
-      </span>
-      <div class="prompt-actions">
+  <div class="prompt-area" style="display:flex; flex-direction:column; min-height:400px;">
+    <div class="prompt-toolbar" style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; gap:5px; align-items:center;">
+        <button id="tab-normal-prompt" class="btn btn-primary" style="padding:2px 8px; font-size:11px; height:auto; min-height:20px; border-radius:4px;">Normal</button>
+        <button id="tab-json-prompt" class="btn btn-outline" style="padding:2px 8px; font-size:11px; height:auto; min-height:20px; border-radius:4px;">JSON</button>
+      </div>
+      
+      <div class="prompt-actions" style="display:flex; align-items:center;">
+        <span class="prompt-meta" style="margin-right:15px; font-size:12px;">
+          <span class="char-count" id="char-count">0</span> ${t('chars')}
+          <span class="char-count" id="json-char-count" style="display:none;">0</span>
+        </span>
         <span class="save-status" id="prompt-saved">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;display:inline;vertical-align:text-bottom"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
           ${t('saved')}
@@ -19,13 +25,27 @@ export const PromptHtml = (t) => `
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
           ${t('btn_save_prompt')}
         </button>
+        <button class="btn btn-primary" id="btn-save-json-prompt" style="display:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+          Kaydet
+        </button>
       </div>
     </div>
+    
     <textarea
       id="prompt-editor"
       class="prompt-editor"
       placeholder="${t('prompt_placeholder')}"
       spellcheck="false"
+      style="flex:1; width:100%; min-height:300px; resize:vertical;"
+    ></textarea>
+    
+    <textarea
+      id="json-prompt-editor"
+      class="prompt-editor"
+      placeholder="{\n  &quot;role&quot;: &quot;...&quot;\n}"
+      spellcheck="false"
+      style="display:none; flex:1; width:100%; min-height:300px; resize:vertical; font-family: monospace; font-size: 13px;"
     ></textarea>
   </div>
 
@@ -42,3 +62,4 @@ export const PromptHtml = (t) => `
   </div>
 </div>
 `;
+

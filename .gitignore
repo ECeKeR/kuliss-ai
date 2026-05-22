@@ -29,3 +29,10 @@ node_modules/
 frontend/dist/
 cmd/gui/frontend/
 *.sh
+release.sh
+release_windows.sh
+update_icon.sh
+bin/
+gui
+main
+

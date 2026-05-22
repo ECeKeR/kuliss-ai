@@ -18,6 +18,7 @@ import (
 type MessageHandler struct {
 	WA		*whatsmeow.Client
 	AI		*ai.Client
+	StartTime	time.Time
 	OnNewMessage	func(phone, role, content string)
 	OnProfilePic	func(phone string)
 }
@@ -35,13 +36,25 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		return
 	}
 
-	if evt.Info.IsFromMe {
-		return
-	}
-
 	msg := evt.Message.GetConversation()
 	if msg == "" {
 		msg = evt.Message.GetExtendedTextMessage().GetText()
+	}
+
+	if evt.Info.IsFromMe {
+		if msg != "" {
+			phone := evt.Info.Chat.ToNonAD().String()
+			db.SaveMessage(phone, "Me", "assistant", msg)
+		}
+		return
+	}
+
+	if !h.StartTime.IsZero() && evt.Info.Timestamp.Before(h.StartTime) {
+		return
+	}
+
+	if time.Since(evt.Info.Timestamp) > 2*time.Minute {
+		return
 	}
 
 	imgMsg := evt.Message.GetImageMessage()
@@ -112,6 +125,13 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 
 	if err != nil {
 		log.Printf("ai yanıtında hata: %v", err)
+		return
+	}
+
+	// AI düşünürken (yaklaşık 5-10sn) kullanıcı manuel mesaj atmış olabilir mi kontrol et.
+	latestHistory, _ := db.GetHistory(phone, 1)
+	if len(latestHistory) > 0 && latestHistory[0]["role"] == "assistant" {
+		log.Printf("[İPTAL] AI düşünürken siz manuel cevap verdiniz, AI cevabı iptal edildi: %s", phone)
 		return
 	}
 

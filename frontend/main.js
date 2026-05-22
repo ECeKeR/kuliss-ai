@@ -31,8 +31,34 @@ function renderUI() {
   document.getElementById('btn-start').addEventListener('click', () => window.startBot());
   document.getElementById('btn-stop').addEventListener('click', () => window.stopBot());
   document.getElementById('btn-save-prompt').addEventListener('click', () => window.savePrompt());
+  document.getElementById('btn-save-json-prompt').addEventListener('click', () => window.saveJsonPrompt());
   document.getElementById('btn-save-settings').addEventListener('click', () => window.saveSettings());
   document.getElementById('prompt-editor').addEventListener('input', updateCharCount);
+  document.getElementById('json-prompt-editor').addEventListener('input', updateCharCount);
+  
+  document.getElementById('tab-normal-prompt').addEventListener('click', () => {
+    document.getElementById('tab-normal-prompt').className = 'btn btn-primary';
+    document.getElementById('tab-json-prompt').className = 'btn btn-outline';
+    document.getElementById('prompt-editor').style.display = 'block';
+    document.getElementById('json-prompt-editor').style.display = 'none';
+    document.getElementById('btn-save-prompt').style.display = 'inline-flex';
+    document.getElementById('btn-save-json-prompt').style.display = 'none';
+    document.getElementById('char-count').style.display = 'inline';
+    document.getElementById('json-char-count').style.display = 'none';
+    updateCharCount();
+  });
+  
+  document.getElementById('tab-json-prompt').addEventListener('click', () => {
+    document.getElementById('tab-json-prompt').className = 'btn btn-primary';
+    document.getElementById('tab-normal-prompt').className = 'btn btn-outline';
+    document.getElementById('json-prompt-editor').style.display = 'block';
+    document.getElementById('prompt-editor').style.display = 'none';
+    document.getElementById('btn-save-json-prompt').style.display = 'inline-flex';
+    document.getElementById('btn-save-prompt').style.display = 'none';
+    document.getElementById('json-char-count').style.display = 'inline';
+    document.getElementById('char-count').style.display = 'none';
+    updateCharCount();
+  });
   
   // WhatsApp Settings Buttons
   const btnWALogin = document.getElementById('btn-settings-wa-login');
@@ -729,33 +755,109 @@ window.unblockContact = async function (phone) {
 // ── Prompt ────────────────────────────────────────────────────────────────────
 async function loadPrompt() {
   try {
-    const text = await BotService.GetPrompt();
+    let text = "";
+    if (BotService.GetPrompt) text = await BotService.GetPrompt();
+    else text = await $Call.ByName("main.BotService.GetPrompt");
+    
+    let jsonText = "";
+    if (BotService.GetJsonPrompt) jsonText = await BotService.GetJsonPrompt();
+    else jsonText = await $Call.ByName("main.BotService.GetJsonPrompt");
+    
     const editor = document.getElementById('prompt-editor');
-    editor.value = text || '';
+    const jsonEditor = document.getElementById('json-prompt-editor');
+    if (editor) editor.value = text || '';
+    if (jsonEditor) jsonEditor.value = jsonText || '';
     updateCharCount();
   } catch (err) {
-    showToast(t('js_prompt_err'), true);
+    showToast('Prompt yüklenemedi: ' + err, true);
   }
 }
 
 function updateCharCount() {
   const editor = document.getElementById('prompt-editor');
+  const jsonEditor = document.getElementById('json-prompt-editor');
   const el = document.getElementById('char-count');
+  const jsonEl = document.getElementById('json-char-count');
+  
   if (editor && el) el.textContent = editor.value.length.toLocaleString();
+  if (jsonEditor && jsonEl) jsonEl.textContent = jsonEditor.value.length.toLocaleString();
 }
 
 window.savePrompt = async function () {
-  const content = document.getElementById('prompt-editor').value;
   const btn = document.getElementById('btn-save-prompt');
+  const normalEditor = document.getElementById('prompt-editor');
+  const jsonEditor = document.getElementById('json-prompt-editor');
+  
+  if (!normalEditor) return;
+  
+  btn.disabled = true;
+  const originalHtml = btn.innerHTML;
+  
+  try {
+    const content = normalEditor.value;
+    
+    // Anında metni kaydet
+    if (BotService.SavePrompt) await BotService.SavePrompt(content);
+    else await $Call.ByName("main.BotService.SavePrompt", content);
+    
+    // UI'ı hemen rahatlat
+    const saved = document.getElementById('prompt-saved');
+    if (saved) {
+      saved.classList.add('show');
+      setTimeout(() => saved.classList.remove('show'), 2500);
+    }
+    showToast(t('js_prompt_ok') || 'Metin kaydedildi. Arka planda JSON oluşturuluyor...');
+    
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+    
+    // Arka planda JSON işlemini başlat (await YOK)
+    const generateTask = BotService.GenerateJsonPrompt 
+      ? BotService.GenerateJsonPrompt(content) 
+      : $Call.ByName("main.BotService.GenerateJsonPrompt", content);
+      
+    generateTask.then(async (generatedJson) => {
+      if (jsonEditor) {
+        jsonEditor.value = generatedJson;
+        updateCharCount();
+      }
+      if (BotService.SaveJsonPrompt) await BotService.SaveJsonPrompt(generatedJson);
+      else await $Call.ByName("main.BotService.SaveJsonPrompt", generatedJson);
+      
+      showToast('Arka plan: JSON Prompt başarıyla oluşturuldu ve kaydedildi.');
+    }).catch(err => {
+      console.error("JSON Generation error:", err);
+      showToast('Arka plan JSON hatası (Monitoru kontrol edin).', true);
+    });
+
+  } catch (err) {
+    showToast('Hata: ' + err, true);
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+};
+
+window.saveJsonPrompt = async function () {
+  const btn = document.getElementById('btn-save-json-prompt');
+  const jsonEditor = document.getElementById('json-prompt-editor');
+  if (!jsonEditor) return;
+  
   btn.disabled = true;
   try {
-    await BotService.SavePrompt(content);
-    const saved = document.getElementById('prompt-saved');
-    saved.classList.add('show');
-    setTimeout(() => saved.classList.remove('show'), 2500);
-    showToast(t('js_prompt_ok'));
+    const content = jsonEditor.value;
+    if (content.trim() !== '') JSON.parse(content); // Doğrulama
+    
+    if (BotService.SaveJsonPrompt) await BotService.SaveJsonPrompt(content);
+    else await $Call.ByName("main.BotService.SaveJsonPrompt", content);
+    
+    const saved = document.getElementById('json-prompt-saved');
+    if (saved) {
+      saved.classList.add('show');
+      setTimeout(() => saved.classList.remove('show'), 2500);
+    }
+    showToast('JSON Prompt kaydedildi.');
   } catch (err) {
-    showToast(t('js_save_err') + ' ' + err, true);
+    showToast('Hata: Geçerli bir JSON formatı girin. ' + err, true);
   } finally {
     btn.disabled = false;
   }

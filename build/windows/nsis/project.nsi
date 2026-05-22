@@ -17,18 +17,15 @@ Unicode true
 ## For a installer with both architectures:
 ## > makensis -DARG_WAILS_AMD64_BINARY=..\..\bin\app-amd64.exe -DARG_WAILS_ARM64_BINARY=..\..\bin\app-arm64.exe
 ####
-## The following information is taken from the wails_tools.nsh file, but they can be overwritten here.
+## The following information overrides the defaults from wails_tools.nsh
 ####
-## !define INFO_PROJECTNAME    "my-project" # Default "wails3configtest"
-## !define INFO_COMPANYNAME    "My Company" # Default "My Company"
-## !define INFO_PRODUCTNAME    "My Product Name" # Default "My Product"
-## !define INFO_PRODUCTVERSION "1.0.0"     # Default "0.1.0"
-## !define INFO_COPYRIGHT      "(c) Now, My Company" # Default "© 2026, My Company"
-###
-## !define PRODUCT_EXECUTABLE  "Application.exe"      # Default "${INFO_PROJECTNAME}.exe"
-## !define UNINST_KEY_NAME     "UninstKeyInRegistry"  # Default "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
-####
-## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
+!define INFO_PROJECTNAME    "Kuliss"
+!define INFO_COMPANYNAME    "Kuliss AI"
+!define INFO_PRODUCTNAME    "Kuliss"
+!define INFO_PRODUCTVERSION "1.0.0"
+!define INFO_COPYRIGHT      "© 2026, Kuliss AI"
+!define PRODUCT_EXECUTABLE  "Kuliss.exe"
+!define UNINST_KEY_NAME     "KulissAIKuliss"
 ####
 ## Include the wails tools
 ####
@@ -65,6 +62,7 @@ ManifestDPIAware true
 !insertmacro MUI_UNPAGE_INSTFILES # Uninstalling page
 
 !insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "Turkish" # Türkçe dil desteği
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
@@ -76,7 +74,7 @@ InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default i
 ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
-   !insertmacro wails.checkArchitecture
+   # !insertmacro wails.checkArchitecture
 FunctionEnd
 
 Section

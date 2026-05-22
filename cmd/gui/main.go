@@ -25,7 +25,7 @@ import (
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 
 	"google.golang.org/protobuf/proto"
 	"message-go/frontend"
@@ -101,8 +101,8 @@ func (s *BotService) Start() (string, error) {
 	}
 
 	if s.container == nil {
-		sessionDB := "file:" + config.DataPath("kuliss-session.db") + "?_foreign_keys=on"
-		container, err := sqlstore.New(context.Background(), "sqlite3", sessionDB, waLog.Stdout("DB", "INFO", true))
+		sessionDB := "file:" + config.DataPath("kuliss-session.db") + "?_pragma=foreign_keys(1)"
+		container, err := sqlstore.New(context.Background(), "sqlite", sessionDB, waLog.Stdout("DB", "INFO", true))
 		if err != nil {
 			return "", fmt.Errorf("store hatası: %w", err)
 		}
@@ -119,7 +119,8 @@ func (s *BotService) Start() (string, error) {
 
 	aiClient := ai.NewClient(s.cfg.OllamaURL, s.cfg.OllamaModel)
 	msgHandler := &handler.MessageHandler{
-		AI:	aiClient,
+		AI:		aiClient,
+		StartTime:	time.Now(),
 		OnNewMessage: func(phone, role, text string) {
 			nowRaw := time.Now().UTC().Format(time.RFC3339)
 			s.wailsApp.Event.Emit("new_msg", Message{
@@ -244,6 +245,45 @@ func (s *BotService) GetPrompt() string {
 
 func (s *BotService) SavePrompt(content string) error {
 	return os.WriteFile(config.DataPath("prompt.txt"), []byte(content), 0644)
+}
+
+func (s *BotService) GetJsonPrompt() string {
+	data, _ := os.ReadFile(config.DataPath("prompt.json"))
+	return string(data)
+}
+
+func (s *BotService) SaveJsonPrompt(content string) error {
+	return os.WriteFile(config.DataPath("prompt.json"), []byte(content), 0644)
+}
+
+func (s *BotService) GenerateJsonPrompt(content string) (string, error) {
+	log.Printf("[SİSTEM] Hızlı JSON Prompt oluşturma işlemi başlatıldı. Model: %s", s.cfg.OllamaModel)
+	cfg := config.Load()
+	aiClient := ai.NewClient(cfg.OllamaURL, cfg.OllamaModel)
+
+	systemPrompt := `You are an AI assistant specialized in structuring unstructured prompts into a clean, highly optimized JSON format.
+The output MUST be a valid JSON object. Do not include markdown code blocks, just output the raw JSON.
+The structured JSON should include fields for:
+- "role": the persona/role description
+- "constraints": a list of rules and limits
+- "products_and_services": list of products/services with pricing
+- "faq": frequently asked questions and answers
+- "tone": the required tone of voice
+Keep the content in the original language provided by the user.`
+
+	history := []map[string]string{{
+		"role":    "system",
+		"content": systemPrompt,
+	}}
+
+	log.Printf("[SİSTEM] AI JSON yapısı için metni ayrıştırıyor...")
+	res, err := aiClient.Chat(history, content)
+	if err != nil {
+		log.Printf("[SİSTEM] JSON oluşturma hatası: %v", err)
+	} else {
+		log.Printf("[SİSTEM] JSON başarıyla oluşturuldu.")
+	}
+	return res, err
 }
 
 func (s *BotService) TestPrompt(history []Message, message string) (string, error) {

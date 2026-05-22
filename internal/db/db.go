@@ -5,7 +5,7 @@ import (
 	"log"
 
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var DB *sql.DB
@@ -14,7 +14,7 @@ func Connect(dbType string, dsn string) {
 	var err error
 
 	if dbType == "sqlite" {
-		DB, err = sql.Open("sqlite3", dsn)
+		DB, err = sql.Open("sqlite", dsn)
 	} else {
 		DB, err = sql.Open("postgres", dsn)
 	}

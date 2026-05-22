@@ -19,6 +19,14 @@ export function BlockContact(phone) {
 }
 
 /**
+ * @param {string} content
+ * @returns {$CancellablePromise<string>}
+ */
+export function GenerateJsonPrompt(content) {
+    return $Call.ByID(1273000323, content);
+}
+
+/**
  * @returns {$CancellablePromise<{ [_ in string]?: string }>}
  */
 export function GetConfig() {
@@ -44,6 +52,13 @@ export function GetConversation(phone) {
     return $Call.ByID(2602544107, phone).then(/** @type {($result: any) => any} */(($result) => {
         return $$createType4($result);
     }));
+}
+
+/**
+ * @returns {$CancellablePromise<string>}
+ */
+export function GetJsonPrompt() {
+    return $Call.ByID(1233012980);
 }
 
 /**
@@ -86,11 +101,19 @@ export function LogoutWhatsApp() {
 }
 
 /**
- * @param {{ [_ in string]?: string }} cfg
+ * @param {{ [_ in string]?: string }} newCfg
  * @returns {$CancellablePromise<void>}
  */
-export function SaveConfig(cfg) {
-    return $Call.ByID(3901672991, cfg);
+export function SaveConfig(newCfg) {
+    return $Call.ByID(3901672991, newCfg);
+}
+
+/**
+ * @param {string} content
+ * @returns {$CancellablePromise<void>}
+ */
+export function SaveJsonPrompt(content) {
+    return $Call.ByID(1194397977, content);
 }
 
 /**
