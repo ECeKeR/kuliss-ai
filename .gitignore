@@ -32,7 +32,9 @@ cmd/gui/frontend/
 release.sh
 release_windows.sh
 update_icon.sh
-bin/
+bin/*
+!bin/*.dmg
+!bin/*.exe
 gui
 main
 
