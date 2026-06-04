@@ -71,10 +71,12 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		return
 	}
 
-	senderNonAD := evt.Info.Sender.ToNonAD()
-	phone := senderNonAD.String()
-	log.Printf("[GELEN] %s: %s", phone, msg)
-	log.Printf("[SİSTEM] %s cihazı için işlem sırasına alındı...", phone)
+	// Chat JID her zaman @s.whatsapp.net formatındadır; @lid sender JID'i ile mesaj gönderilemez.
+	chatJID := evt.Info.Chat.ToNonAD()
+	phone := chatJID.String()
+	senderJID := evt.Info.Sender // profil fotoğrafı için orijinal sender
+	log.Printf("[IN] %s: %s", phone, msg)
+	log.Printf("[SYSTEM] Queued for device %s...", phone)
 
 	if err := db.SaveMessage(phone, evt.Info.PushName, "user", msg); err != nil {
 		log.Printf("mesaj kaydedilemedi: %v", err)
@@ -90,7 +92,7 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 				}
 			}
 		}
-	}(senderNonAD, phone)
+	}(senderJID, phone)
 
 	if h.OnNewMessage != nil {
 		h.OnNewMessage(phone, "user", msg)
@@ -104,24 +106,24 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 
 	done := make(chan bool)
 	go func() {
-		h.WA.SendChatPresence(context.Background(), evt.Info.Sender, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+		h.WA.SendChatPresence(context.Background(), chatJID, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 		ticker := time.NewTicker(8 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				h.WA.SendChatPresence(context.Background(), evt.Info.Sender, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+				h.WA.SendChatPresence(context.Background(), chatJID, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 			case <-done:
 				return
 			}
 		}
 	}()
 
-	log.Printf("[SİSTEM] Ollama AI modülünden yanıt bekleniyor... (Model Aktif)")
+	log.Printf("[SYSTEM] Waiting for response from Ollama AI module... (Model Active)")
 	reply, err := h.AI.Chat(history, msg)
 
 	done <- true
-	h.WA.SendChatPresence(context.Background(), evt.Info.Sender, types.ChatPresencePaused, types.ChatPresenceMediaText)
+	h.WA.SendChatPresence(context.Background(), chatJID, types.ChatPresencePaused, types.ChatPresenceMediaText)
 
 	if err != nil {
 		log.Printf("ai yanıtında hata: %v", err)
@@ -140,7 +142,7 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		return
 	}
 
-	log.Printf("[GÖNDERİLEN] %s: %s", phone, reply)
+	log.Printf("[OUT] %s: %s", phone, reply)
 
 	if err := db.SaveMessage(phone, "", "assistant", reply); err != nil {
 		log.Printf("yanıt kaydedilemedi: %v", err)
@@ -149,7 +151,7 @@ func (h *MessageHandler) handleMessage(evt *events.Message) {
 		h.OnNewMessage(phone, "assistant", reply)
 	}
 
-	h.sendMessage(evt.Info.Sender, reply)
+	h.sendMessage(chatJID, reply)
 }
 
 func (h *MessageHandler) sendMessage(to types.JID, text string) {
