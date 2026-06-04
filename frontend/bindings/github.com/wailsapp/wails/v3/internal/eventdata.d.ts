@@ -12,6 +12,7 @@ import type * as main$0 from "../../../../../message-go/cmd/gui/models.js";
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "data_cleared": boolean;
             "new_msg": main$0.Message;
             "qr_code": string;
             "qr_timeout": boolean;

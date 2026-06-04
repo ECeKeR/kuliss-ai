@@ -57,7 +57,10 @@ export const SettingsHtml = (t) => `
     <div class="settings-body">
       <div class="form-group">
         <label class="form-label">${t('wa_status')}</label>
-        <div id="settings-wa-status" class="status-badge stopped">${t('wa_disconnected')}</div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div id="settings-wa-status" class="status-badge stopped">${t('wa_disconnected')}</div>
+          <span id="settings-linked-phone" style="display:none; font-size:13px; color:var(--success); font-weight:600;">—</span>
+        </div>
       </div>
       
       <div id="settings-wa-actions" style="margin-top:12px; display:flex; flex-direction:column; gap:12px;">
@@ -67,6 +70,11 @@ export const SettingsHtml = (t) => `
         
         <button id="btn-settings-wa-logout" class="btn btn-danger" style="width:fit-content; display:none;">
           ${t('wa_btn_logout')}
+        </button>
+
+        <button id="btn-clear-data" class="btn btn-outline" style="width:fit-content; font-size:12px; color:var(--text-muted);">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+          ${t('clear_data') || 'Mesaj Geçmişini Temizle'}
         </button>
 
         <div id="settings-qr-area" style="display:none; text-align:center; padding:15px; border:1px solid var(--border); border-radius:12px; background:var(--bg-app);">

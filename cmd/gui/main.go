@@ -72,15 +72,17 @@ type BotStatus struct {
 	Running		bool	`json:"running"`
 	Connected	bool	`json:"connected"`
 	Model		string	`json:"model"`
+	LinkedPhone	string	`json:"linked_phone"`
 }
 
 type BotService struct {
-	mu		sync.Mutex
-	wa		*whatsmeow.Client
-	container	*sqlstore.Container
-	wailsApp	*application.App
-	running		bool
-	cfg		*config.Config
+	mu			sync.Mutex
+	wa			*whatsmeow.Client
+	container		*sqlstore.Container
+	wailsApp		*application.App
+	running			bool
+	cfg			*config.Config
+	linkedPhone		string
 }
 
 func NewBotService(app *application.App) *BotService {
@@ -156,6 +158,10 @@ func (s *BotService) Start() (string, error) {
 				} else if evt.Event == "success" {
 					s.mu.Lock()
 					s.running = true
+					// Store the connected phone number
+					if waClient.Store.ID != nil {
+						s.linkedPhone = waClient.Store.ID.User + "@" + waClient.Store.ID.Server
+					}
 					s.mu.Unlock()
 					s.wailsApp.Event.Emit("wa_connected", true)
 					s.wailsApp.Event.Emit("status_change", s.GetStatus())
@@ -171,6 +177,9 @@ func (s *BotService) Start() (string, error) {
 		return "", fmt.Errorf("reconnect: %w", err)
 	}
 	s.running = true
+	if waClient.Store.ID != nil {
+		s.linkedPhone = waClient.Store.ID.User + "@" + waClient.Store.ID.Server
+	}
 	s.wailsApp.Event.Emit("status_change", s.GetStatus())
 	return "connected", nil
 }
@@ -192,10 +201,17 @@ func (s *BotService) GetStatus() BotStatus {
 	if s.cfg != nil {
 		model = s.cfg.OllamaModel
 	}
+	linkedPhone := s.linkedPhone
+	// Also try to read directly from the WA client if available
+	if linkedPhone == "" && s.wa != nil && s.wa.Store != nil && s.wa.Store.ID != nil {
+		linkedPhone = s.wa.Store.ID.User + "@" + s.wa.Store.ID.Server
+		s.linkedPhone = linkedPhone
+	}
 	return BotStatus{
-		Running:	s.running,
-		Connected:	s.wa != nil && s.wa.IsConnected(),
-		Model:		model,
+		Running:		s.running,
+		Connected:		s.wa != nil && s.wa.IsConnected(),
+		Model:			model,
+		LinkedPhone:	linkedPhone,
 	}
 }
 
@@ -207,6 +223,7 @@ func (s *BotService) LogoutWhatsApp() error {
 	s.wa = nil
 	s.running = false
 	s.container = nil
+	s.linkedPhone = ""
 	s.mu.Unlock()
 
 	if client != nil {
@@ -234,7 +251,35 @@ func (s *BotService) LogoutWhatsApp() error {
 		log.Println("Session DB silindi, yeni QR üretilecek")
 	}
 
+	// Clear conversation history so a fresh account starts clean
+	s.clearAllData()
+
 	s.wailsApp.Event.Emit("status_change", s.GetStatus())
+	s.wailsApp.Event.Emit("data_cleared", true)
+	return nil
+}
+
+// clearAllData wipes all conversations and contacts from the database.
+func (s *BotService) clearAllData() {
+	if db.DB == nil {
+		return
+	}
+	if _, err := db.DB.Exec(`DELETE FROM conversations`); err != nil {
+		log.Printf("Konuşmalar silinemedi: %v", err)
+	}
+	if _, err := db.DB.Exec(`DELETE FROM contacts`); err != nil {
+		log.Printf("Kişiler silinemedi: %v", err)
+	}
+	if _, err := db.DB.Exec(`DELETE FROM blocked_contacts`); err != nil {
+		log.Printf("Engelliler silinemedi: %v", err)
+	}
+	log.Println("[SYSTEM] Tüm mesaj geçmişi ve kişiler silindi (hesap çıkışı).")
+}
+
+// ClearData is a public API to manually clear all conversation data from the UI.
+func (s *BotService) ClearData() error {
+	s.clearAllData()
+	s.wailsApp.Event.Emit("data_cleared", true)
 	return nil
 }
 
@@ -257,7 +302,7 @@ func (s *BotService) SaveJsonPrompt(content string) error {
 }
 
 func (s *BotService) GenerateJsonPrompt(content string) (string, error) {
-	log.Printf("[SİSTEM] Hızlı JSON Prompt oluşturma işlemi başlatıldı. Model: %s", s.cfg.OllamaModel)
+	log.Printf("[SYSTEM] Fast JSON Prompt generation started. Model: %s", s.cfg.OllamaModel)
 	cfg := config.Load()
 	aiClient := ai.NewClient(cfg.OllamaURL, cfg.OllamaModel)
 
@@ -268,20 +313,16 @@ The structured JSON should include fields for:
 - "constraints": a list of rules and limits
 - "products_and_services": list of products/services with pricing
 - "faq": frequently asked questions and answers
+- "examples": a list of few-shot example conversations, with "user" and "ai" keys
 - "tone": the required tone of voice
 Keep the content in the original language provided by the user.`
 
-	history := []map[string]string{{
-		"role":    "system",
-		"content": systemPrompt,
-	}}
-
-	log.Printf("[SİSTEM] AI JSON yapısı için metni ayrıştırıyor...")
-	res, err := aiClient.Chat(history, content)
+	log.Printf("[SYSTEM] AI is parsing text for JSON structure...")
+	res, err := aiClient.ChatDirect(systemPrompt, content)
 	if err != nil {
-		log.Printf("[SİSTEM] JSON oluşturma hatası: %v", err)
+		log.Printf("[SYSTEM] JSON generation error: %v", err)
 	} else {
-		log.Printf("[SİSTEM] JSON başarıyla oluşturuldu.")
+		log.Printf("[SYSTEM] JSON successfully generated.")
 	}
 	return res, err
 }
@@ -496,6 +537,7 @@ func init() {
 	application.RegisterEvent[Message]("new_msg")
 	application.RegisterEvent[string]("sys_log")
 	application.RegisterEvent[bool]("qr_timeout")
+	application.RegisterEvent[bool]("data_cleared")
 }
 
 func getFrontendAssets() fs.FS {

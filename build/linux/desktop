@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A wails3configtest application
+Name=kuliss-ai
+Comment=Kuliss AI - AI-powered messaging assistant
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/wails3configtest %u
+Exec=/usr/local/bin/Kuliss %u
 Terminal=false
 Type=Application
-Icon=wails3configtest
+Icon=Kuliss
 Categories=Utility;
-StartupWMClass=wails3configtest
+StartupWMClass=Kuliss
 
  

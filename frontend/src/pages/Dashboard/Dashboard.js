@@ -15,6 +15,7 @@ export const DashboardHtml = (t) => `
       <div class="status-text">
         <div class="status-label" id="status-label">${t('status_stopped')}</div>
         <div class="status-sub" id="status-sub">${t('status_start_hint')}</div>
+        <span id="linked-phone-badge" style="display:none; margin-top:4px; font-size:12px; color:var(--success); font-weight:500; letter-spacing:0.3px;"></span>
       </div>
     </div>
     <div class="btn-group">

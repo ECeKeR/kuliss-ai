@@ -19,6 +19,14 @@ export function BlockContact(phone) {
 }
 
 /**
+ * ClearData is a public API to manually clear all conversation data from the UI.
+ * @returns {$CancellablePromise<void>}
+ */
+export function ClearData() {
+    return $Call.ByID(578263645);
+}
+
+/**
  * @param {string} content
  * @returns {$CancellablePromise<string>}
  */

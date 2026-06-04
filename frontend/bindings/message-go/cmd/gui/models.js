@@ -33,6 +33,13 @@ export class BotStatus {
              */
             this["model"] = "";
         }
+        if (!("linked_phone" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["linked_phone"] = "";
+        }
 
         Object.assign(this, $$source);
     }

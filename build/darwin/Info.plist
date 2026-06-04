@@ -3,7 +3,7 @@
 <plist version="1.0">
 	<dict>
 		<key>CFBundleExecutable</key>
-		<string>kuliss-ai</string>
+		<string>Kuliss</string>
 		<key>CFBundleGetInfoString</key>
 		<string>Kuliss AI messaging application</string>
 		<key>CFBundleIconFile</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleIdentifier</key>
 		<string>ai.kuliss.app</string>
 		<key>CFBundleName</key>
-		<string>kuliss-ai</string>
+		<string>Kuliss</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>

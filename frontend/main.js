@@ -67,6 +67,17 @@ function renderUI() {
   const btnWALogout = document.getElementById('btn-settings-wa-logout');
   if (btnWALogout) btnWALogout.addEventListener('click', () => window.logoutWhatsApp());
 
+  const btnClearData = document.getElementById('btn-clear-data');
+  if (btnClearData) btnClearData.addEventListener('click', async () => {
+    if (!confirm(t('clear_data_confirm') || 'Tüm mesaj geçmişi ve kişiler silinecek. Emin misiniz?')) return;
+    try {
+      if (BotService.ClearData) await BotService.ClearData();
+      else await $Call.ByName('main.BotService.ClearData');
+    } catch (err) {
+      showToast('❌ ' + err, true);
+    }
+  });
+
   if (document.getElementById('btn-prompt-test')) {
     document.getElementById('btn-prompt-test').addEventListener('click', () => {
       const msg = document.getElementById('prompt-test-input').value.trim();
@@ -431,7 +442,7 @@ Events.On('status_change', (evt) => {
   // Wails v3 event verisi evt.data içinde geliyor
   const status = evt?.data ?? evt;
   if (!status) return;
-  const { running, connected, model } = status;
+  const { running, connected, model, linked_phone } = status;
 
   const quickSelect = document.getElementById('quick-model-select');
   if (quickSelect && model) {
@@ -452,10 +463,33 @@ Events.On('status_change', (evt) => {
     setBtnState(true, false);
   }
 
+  // Show linked phone number on dashboard
+  const linkedPhoneEl = document.getElementById('linked-phone-badge');
+  if (linkedPhoneEl) {
+    if (connected && linked_phone) {
+      const cleanPhone = linked_phone.replace('@s.whatsapp.net', '').replace('@lid', '');
+      linkedPhoneEl.textContent = '📱 ' + cleanPhone;
+      linkedPhoneEl.style.display = 'inline-block';
+    } else {
+      linkedPhoneEl.style.display = 'none';
+    }
+  }
+
   // Update Settings Page Status
   const sStatus = document.getElementById('settings-wa-status');
   const sLoginBtn = document.getElementById('btn-settings-wa-login');
   const sLogoutBtn = document.getElementById('btn-settings-wa-logout');
+  const sLinkedPhone = document.getElementById('settings-linked-phone');
+
+  if (sLinkedPhone) {
+    if (connected && linked_phone) {
+      const cleanPhone = linked_phone.replace('@s.whatsapp.net', '').replace('@lid', '');
+      sLinkedPhone.textContent = cleanPhone;
+      sLinkedPhone.style.display = 'block';
+    } else {
+      sLinkedPhone.style.display = 'none';
+    }
+  }
 
   if (sStatus) {
     if (connected) {
@@ -470,6 +504,25 @@ Events.On('status_change', (evt) => {
       if (sLogoutBtn) sLogoutBtn.style.display = 'none';
     }
   }
+});
+
+Events.On('data_cleared', () => {
+  // Reset in-memory contacts
+  allContacts = [];
+  currentContact = null;
+  updateStats([]);
+
+  // Clear contact list UI
+  const listEl = document.getElementById('contact-list');
+  if (listEl) {
+    listEl.innerHTML = `<div class="contact-list-header">${t('contacts')}</div><div class="list-empty">${t('js_no_conv') || 'No conversations yet.'}</div>`;
+  }
+
+  // Clear conversation view
+  const convView = document.getElementById('conv-view');
+  if (convView) convView.innerHTML = '';
+
+  showToast(t('js_data_cleared') || 'Mesaj geçmişi temizlendi.');
 });
 
 Events.On('sys_log', (evt) => {
@@ -491,7 +544,13 @@ Events.On('sys_log', (evt) => {
     let type = 'SYS';
     let typeClass = 'system';
     
-    if (line.includes('[GELEN]')) {
+    if (line.includes('[IN]')) {
+       type = 'IN'; typeClass = 'in'; line = line.replace('[IN] ', '');
+    } else if (line.includes('[OUT]')) {
+       type = 'OUT'; typeClass = 'out'; line = line.replace('[OUT] ', '');
+    } else if (line.includes('[SYSTEM]')) {
+       type = 'SYS'; typeClass = 'system'; line = line.replace('[SYSTEM] ', '');
+    } else if (line.includes('[GELEN]')) {
        type = 'IN'; typeClass = 'in'; line = line.replace('[GELEN] ', '');
     } else if (line.includes('[GÖNDERİLEN]')) {
        type = 'OUT'; typeClass = 'out'; line = line.replace('[GÖNDERİLEN] ', '');
@@ -800,13 +859,7 @@ window.savePrompt = async function () {
     if (BotService.SavePrompt) await BotService.SavePrompt(content);
     else await $Call.ByName("main.BotService.SavePrompt", content);
     
-    // UI'ı hemen rahatlat
-    const saved = document.getElementById('prompt-saved');
-    if (saved) {
-      saved.classList.add('show');
-      setTimeout(() => saved.classList.remove('show'), 2500);
-    }
-    showToast(t('js_prompt_ok') || 'Metin kaydedildi. Arka planda JSON oluşturuluyor...');
+    showToast(t('js_prompt_saving_bg') || 'Metin kaydedildi, yapay zeka JSON oluşturuyor...');
     
     btn.disabled = false;
     btn.innerHTML = originalHtml;
@@ -824,10 +877,15 @@ window.savePrompt = async function () {
       if (BotService.SaveJsonPrompt) await BotService.SaveJsonPrompt(generatedJson);
       else await $Call.ByName("main.BotService.SaveJsonPrompt", generatedJson);
       
-      showToast('Arka plan: JSON Prompt başarıyla oluşturuldu ve kaydedildi.');
+      const saved = document.getElementById('prompt-saved');
+      if (saved) {
+        saved.classList.add('show');
+        setTimeout(() => saved.classList.remove('show'), 2500);
+      }
+      showToast(t('js_json_ok') || 'JSON Prompt başarıyla oluşturuldu ve kaydedildi.');
     }).catch(err => {
       console.error("JSON Generation error:", err);
-      showToast('Arka plan JSON hatası (Monitoru kontrol edin).', true);
+      showToast(t('js_json_err') || 'JSON oluşturma hatası (Monitoru kontrol edin).', true);
     });
 
   } catch (err) {
@@ -855,9 +913,9 @@ window.saveJsonPrompt = async function () {
       saved.classList.add('show');
       setTimeout(() => saved.classList.remove('show'), 2500);
     }
-    showToast('JSON Prompt kaydedildi.');
+    showToast(t('js_json_saved') || 'JSON Prompt kaydedildi.');
   } catch (err) {
-    showToast('Hata: Geçerli bir JSON formatı girin. ' + err, true);
+    showToast((t('js_json_format_err') || 'Hata: Geçerli bir JSON formatı girin.') + ' ' + err, true);
   } finally {
     btn.disabled = false;
   }
